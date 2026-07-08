@@ -1,0 +1,7 @@
+{
+  "name": "frontend-legacy",
+  "private": true,
+  "scripts": {
+    "dev": "echo \"Please run npm commands from the project root (c:/Users/HP/OneDrive/Desktop/Major_project_MHV)\""
+  }
+}

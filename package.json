@@ -1,10 +1,18 @@
 {
   "name": "major-project-mhv",
   "version": "1.0.0",
-  "description": "Enterprise-level furniture e-commerce application",
   "private": true,
   "workspaces": [
-    "client",
-    "server"
-  ]
+    "frontend/user-app",
+    "frontend/admin-app",
+    "backend"
+  ],
+  "scripts": {
+    "dev:user": "npm run dev --workspace=frontend/user-app",
+    "dev:admin": "npm run dev --workspace=frontend/admin-app",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev": "npm run dev:user",
+    "build:user": "npm run build --workspace=frontend/user-app",
+    "build:admin": "npm run build --workspace=frontend/admin-app"
+  }
 }
