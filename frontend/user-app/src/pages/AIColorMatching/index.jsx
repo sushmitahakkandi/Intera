@@ -561,6 +561,7 @@ export default function AIColorMatching() {
         const catalogList = getCatalogProductsForRoom(roomType);
         res.data.shoppingList = catalogList;
         res.data.recommendations = { primary: catalogList };
+        res.data.afterImage = 'https://images.unsplash.com/photo-1585412727339-54e4bae3bbf9?auto=format&fit=crop&w=800&q=80';
         if (customPalette) {
           res.data.palette = customPalette;
           res.data.wallColor = customPalette[0];
@@ -574,6 +575,7 @@ export default function AIColorMatching() {
         const mockData = getMockDataForRoomType(roomType);
         mockData.shoppingList = catalogList;
         mockData.recommendations = { primary: catalogList };
+        mockData.afterImage = 'https://images.unsplash.com/photo-1585412727339-54e4bae3bbf9?auto=format&fit=crop&w=800&q=80';
         if (customPalette) {
           mockData.palette = customPalette;
           mockData.wallColor = customPalette[0];
@@ -601,7 +603,8 @@ export default function AIColorMatching() {
           wallColor: templateData.wallColor,
           palette: templateData.palette,
           shoppingList: catalogList,
-          recommendations: { primary: catalogList }
+          recommendations: { primary: catalogList },
+          afterImage: templateData.after
         };
         setIsScanningComplete(compiled);
       }, 1500);
@@ -704,7 +707,8 @@ export default function AIColorMatching() {
         { name: 'Oatmeal Beige', hex: '#E7DCC5', pct: 30 },
         { name: 'Soft Charcoal', hex: '#333333', pct: 20 },
         { name: 'Oak Wood', hex: '#CDA275', pct: 10 }
-      ]
+      ],
+      afterImage: 'https://images.unsplash.com/photo-1585412727339-54e4bae3bbf9?auto=format&fit=crop&w=800&q=80'
     };
   };
 
@@ -1403,7 +1407,7 @@ export default function AIColorMatching() {
                         className={`px-3 py-1.5 transition-colors ${compareMode ? 'bg-[#2B2B2B] text-white' : 'bg-gray-50 text-gray-400'
                           }`}
                       >
-                        Split Layout
+                        AI Rendered View
                       </button>
                     </div>
                   </div>
@@ -1425,21 +1429,7 @@ export default function AIColorMatching() {
                       </select>
                     </div>
 
-                    {compareMode && (
-                      <div className="flex-1 min-w-[120px]">
-                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">Right Style (Compare)</label>
-                        <select
-                          value={compareLayout}
-                          onChange={(e) => setCompareLayout(e.target.value)}
-                          className="w-full text-xs font-bold text-gray-750 border border-gray-200 rounded-large px-2.5 py-1.5 bg-white focus:outline-none"
-                        >
-                          <option value="Modern">Modern Layout</option>
-                          <option value="Luxury">Luxury Layout</option>
-                          <option value="Minimal">Minimal Layout</option>
-                          <option value="Scandinavian">Scandinavian Layout</option>
-                        </select>
-                      </div>
-                    )}
+                    {/* Removed right style dropdown for compare mode as it's now an AI render view */}
 
                     <button
                       onClick={() => {
@@ -1475,7 +1465,7 @@ export default function AIColorMatching() {
                   <div className="absolute inset-0">
                     <img src={uploadPreview || beforeImageSrc} alt="Room Canvas Base" className="w-full h-full object-cover pointer-events-none" />
 
-                    {(layoutsState[activeLayout] || []).map((item) => (
+                    {!compareMode && (layoutsState[activeLayout] || []).map((item) => (
                       item.visible !== false && (
                         <div
                           key={item.productId}
@@ -1508,45 +1498,13 @@ export default function AIColorMatching() {
                     ))}
                   </div>
 
-                  {/* Right Pane (compareLayout) */}
+                  {/* Right Pane (AI Rendered Complete Room) */}
                   {compareMode && (
                     <div
                       className="absolute inset-0 border-l-2 border-white z-10"
                       style={{ clipPath: `polygon(${sliderPosition}% 0, 100% 0, 100% 100%, ${sliderPosition}% 100%)` }}
                     >
-                      <img src={uploadPreview || beforeImageSrc} alt="Room Canvas Base Compare" className="w-full h-full object-cover pointer-events-none" />
-
-                      {(layoutsState[compareLayout] || []).map((item) => (
-                        item.visible !== false && (
-                          <div
-                            key={item.productId}
-                            className={`absolute pointer-events-auto cursor-grab active:cursor-grabbing transition-shadow ${selectedItem?.productId === item.productId ? 'ring-2 ring-[#A66A2C] ring-offset-2 rounded-large' : ''
-                              }`}
-                            style={{
-                              left: `${item.xPct}%`,
-                              top: `${item.yPct}%`,
-                              zIndex: item.zIndex || 5,
-                              transform: `translate(-50%, -50%) rotate(${item.rotation || 0}deg) scale(${item.scale || 1.0})`
-                            }}
-                            onMouseDown={(e) => handleDragStart(e, item)}
-                            onTouchStart={(e) => handleDragStart(e, item)}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedItem(item);
-                            }}
-                          >
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="max-w-[110px] md:max-w-[150px] object-contain drop-shadow-[0_8px_16px_rgba(0,0,0,0.35)] pointer-events-none"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = 'https://mahaveer-smart-furniture-hub.s3.eu-north-1.amazonaws.com/cache/sofa/img-0.webp';
-                              }}
-                            />
-                          </div>
-                        )
-                      ))}
+                      <img src={backendAnalysis?.afterImage || 'https://images.unsplash.com/photo-1585412727339-54e4bae3bbf9?auto=format&fit=crop&w=800&q=80'} alt="Room Canvas AI Rendered" className="w-full h-full object-cover pointer-events-none" />
                     </div>
                   )}
 
