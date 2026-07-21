@@ -68,14 +68,23 @@ const uploadProductImage = async (req, res) => {
       return res.status(400).json({ error: 'No product image file provided' });
     }
 
-    const { name, category, viewType } = req.body;
-    if (!name || !category || !viewType) {
-      return res.status(400).json({ error: 'Missing name, category, or viewType in request body' });
+    const { name, category, viewType, productId } = req.body;
+    if (!name || !category || !viewType || !productId) {
+      return res.status(400).json({ error: 'Missing name, category, viewType, or productId in request body' });
     }
 
-    // Determine S3 Folder based on category: e.g. products/sofas
+    // Determine subfolder based on viewType
+    let subFolder = 'gallery';
+    if (viewType === 'thumbnail') {
+      subFolder = 'thumbnail';
+    } else if (viewType === '360') {
+      subFolder = '360';
+    } else if (viewType === 'material' || viewType === 'materials' || viewType === 'materialCloseUp') {
+      subFolder = 'materials';
+    }
+
     const categorySlug = s3Upload.slugify(category);
-    const s3Folder = `products/${categorySlug}`;
+    const s3Folder = `products/${categorySlug}/${productId}/${subFolder}`;
 
     const result = await s3Upload.uploadImage(req.file, s3Folder, {
       baseName: name,

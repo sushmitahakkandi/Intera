@@ -291,7 +291,7 @@ export const CategoryCard = ({ category, onClick }) => {
   return (
     <Card hoverEffect onClick={onClick} className="flex flex-col items-center justify-center p-6 text-center">
       <div className="w-16 h-16 rounded-full overflow-hidden bg-primary-light flex items-center justify-center mb-3">
-        <img src={category.image} alt={category.name} className="w-full h-full object-cover" />
+        <LazyImage src={category.image} alt={category.name} className="w-full h-full object-cover" />
       </div>
       <h5 className="font-semibold text-gray-800 text-sm mb-1">{category.name}</h5>
       <span className="text-xs text-gray-400 font-medium">{category.count} Products</span>
@@ -369,19 +369,57 @@ export const Pagination = ({ currentPage = 1, totalPages = 5, onPageChange }) =>
             >
               <FiChevronLeft size={16} />
             </button>
-            {[...Array(totalPages)].map((_, i) => (
-              <button
-                key={i}
-                onClick={() => onPageChange(i + 1)}
-                className={`relative inline-flex items-center px-4.5 py-2 text-sm font-semibold focus:z-20 ${
-                  currentPage === i + 1
-                    ? 'z-10 bg-primary text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
-                    : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
+            {(() => {
+              const pages = [];
+              const maxVisible = 5;
+              if (totalPages <= maxVisible) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+              } else {
+                pages.push(1);
+                let start = Math.max(2, currentPage - 1);
+                let end = Math.min(totalPages - 1, currentPage + 1);
+                if (currentPage <= 2) {
+                  end = 4;
+                } else if (currentPage >= totalPages - 1) {
+                  start = totalPages - 3;
+                }
+                if (start > 2) {
+                  pages.push('...');
+                }
+                for (let i = start; i <= end; i++) {
+                  pages.push(i);
+                }
+                if (end < totalPages - 1) {
+                  pages.push('...');
+                }
+                pages.push(totalPages);
+              }
+              return pages.map((page, idx) => {
+                if (page === '...') {
+                  return (
+                    <span
+                      key={`dots-${idx}`}
+                      className="relative inline-flex items-center px-3.5 py-2 text-sm font-semibold text-gray-500 ring-1 ring-inset ring-gray-300 select-none bg-gray-50"
+                    >
+                      ...
+                    </span>
+                  );
+                }
+                return (
+                  <button
+                    key={page}
+                    onClick={() => onPageChange(page)}
+                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20 ${
+                      currentPage === page
+                        ? 'z-10 bg-primary text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary'
+                        : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              });
+            })()}
             <button
               onClick={() => currentPage < totalPages && onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
@@ -430,19 +468,7 @@ export const FilterPanel = ({
   onSelectCategory,
   maxPrice = 150000,
   currentPrice = 150000,
-  onPriceChange,
-  materials = ['Wood', 'Metal', 'Leather', 'Fabric'],
-  selectedMaterial,
-  onSelectMaterial,
-  colors = [
-    { name: 'Brown', value: '#8b5a2b' },
-    { name: 'Beige', value: '#e6c280' },
-    { name: 'Black', value: '#1a1a1a' },
-    { name: 'Gray', value: '#7f8c8d' },
-    { name: 'Navy', value: '#2c3e50' }
-  ],
-  selectedColor,
-  onSelectColor
+  onPriceChange
 }) => {
   return (
     <Card className="flex flex-col gap-6 w-full md:w-64">
@@ -484,40 +510,6 @@ export const FilterPanel = ({
         <div className="flex justify-between text-xs font-semibold text-gray-500">
           <span>₹0</span>
           <span>₹{currentPrice.toLocaleString()}</span>
-        </div>
-      </div>
-
-      <div>
-        <h4 className="font-bold text-gray-800 text-sm border-b border-gray-100 pb-3 mb-4">Material</h4>
-        <div className="flex flex-col gap-2.5">
-          {materials.map((m, i) => (
-            <label key={i} className="inline-flex items-center cursor-pointer text-sm text-gray-600 font-medium hover:text-primary transition-colors">
-              <input
-                type="checkbox"
-                checked={selectedMaterial === m}
-                onChange={() => onSelectMaterial(selectedMaterial === m ? null : m)}
-                className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded focus:ring-2 mr-2"
-              />
-              {m}
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h4 className="font-bold text-gray-800 text-sm border-b border-gray-100 pb-3 mb-4">Color</h4>
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {colors.map((c, i) => (
-            <button
-              key={i}
-              onClick={() => onSelectColor(selectedColor === c.value ? null : c.value)}
-              style={{ backgroundColor: c.value }}
-              title={c.name}
-              className={`w-6 h-6 rounded-full border border-gray-300 focus:outline-none transition-all duration-200 ${
-                selectedColor === c.value ? 'scale-115 ring-2 ring-primary ring-offset-2' : 'hover:scale-105'
-              }`}
-            />
-          ))}
         </div>
       </div>
     </Card>
@@ -667,6 +659,50 @@ export const Stepper = ({ steps = [], currentStep = 0 }) => {
           )}
         </React.Fragment>
       ))}
+    </div>
+  );
+};
+
+// ==========================================
+// 25. LAZY IMAGE
+// ==========================================
+export const LazyImage = ({ src, alt, className = '', ...props }) => {
+  const [loaded, setLoaded] = React.useState(false);
+  const [currentSrc, setCurrentSrc] = React.useState(src);
+  const fallbackSrc = props.fallbackSrc || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='800' viewBox='0 0 800 800'%3E%3Crect width='800' height='800' fill='%23f3f4f6'/%3E%3Cpath d='M120 530l160-170 120 110 90-90 190 200H120z' fill='%23e5e7eb'/%3E%3Ccircle cx='300' cy='280' r='52' fill='%23e5e7eb'/%3E%3C/svg%3E";
+
+  React.useEffect(() => {
+    if (src !== currentSrc) {
+      setCurrentSrc(src);
+      setLoaded(false);
+    }
+  }, [src, currentSrc]);
+
+  return (
+    <div className={`relative overflow-hidden bg-gray-100 ${className}`}>
+      {!loaded && (
+        <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+      )}
+      <img
+        src={currentSrc}
+        alt={alt}
+        loading={props.loading || 'lazy'}
+        decoding="async"
+        fetchPriority={props.fetchPriority}
+        onLoad={() => setLoaded(true)}
+        onError={(e) => {
+          if (e.currentTarget.dataset.fallbackApplied === 'true') {
+            setLoaded(true);
+            return;
+          }
+
+          e.currentTarget.dataset.fallbackApplied = 'true';
+          e.currentTarget.src = fallbackSrc;
+          setLoaded(true);
+        }}
+        className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        {...props}
+      />
     </div>
   );
 };

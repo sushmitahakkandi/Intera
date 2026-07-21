@@ -9,28 +9,55 @@ export default function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState({});
 
-  const onSubmit = (e) => {
+  const validate = () => {
+    const errs = {};
+    if (!email.trim()) errs.email = 'Email address is required';
+    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = 'Enter a valid email address';
+    if (!password) errs.password = 'Password is required';
+    else if (password.length < 6) errs.password = 'Password must be at least 6 characters';
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const onSubmit = async (e) => {
     e.preventDefault();
-    if (email && password) {
-      const is_admin = email.includes('admin');
-      login(email, password, is_admin ? 'admin' : 'customer');
+    if (!validate()) return;
+    try {
+      const loggedUser = await login(email, password);
       toast.success('Logged in successfully!');
-      if (is_admin) {
+      if (loggedUser.role === 'admin') {
         navigate('/admin');
       } else {
         navigate('/');
       }
+    } catch (error) {
+      toast.error(error.message || 'Invalid email or password');
     }
   };
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+    <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
       <h2 className="text-xl font-extrabold text-gray-800 text-center mb-1">Welcome Back</h2>
       <p className="text-xs text-gray-400 text-center mb-4">Please log in to your account</p>
 
-      <Input label="Email Address" type="email" placeholder="e.g. customer@gmail.com (or admin@gmail.com)" value={email} onChange={(e) => setEmail(e.target.value)} required />
-      <Input label="Password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+      <Input
+        label="Email Address"
+        type="email"
+        placeholder="e.g. customer@gmail.com"
+        value={email}
+        onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: '' })); }}
+        error={errors.email}
+      />
+      <Input
+        label="Password"
+        type="password"
+        placeholder="••••••••"
+        value={password}
+        onChange={(e) => { setPassword(e.target.value); setErrors(prev => ({ ...prev, password: '' })); }}
+        error={errors.password}
+      />
 
       <div className="flex justify-between items-center text-xs font-semibold mt-1">
         <label className="flex items-center gap-2 cursor-pointer text-gray-500">

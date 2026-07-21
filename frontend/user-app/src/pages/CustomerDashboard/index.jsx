@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiUser, FiEdit2, FiShoppingBag, FiMapPin, FiCreditCard, FiFileText, FiBell, FiSettings } from 'react-icons/fi';
+import { FiUser, FiEdit2, FiShoppingBag, FiMapPin, FiCreditCard, FiFileText, FiBell, FiSettings, FiMessageCircle } from 'react-icons/fi';
 
 const dashboardCards = [
   { icon: FiShoppingBag, label: 'My Orders', value: '3', sub: 'Total placed', link: '/orders', color: 'bg-blue-50 text-blue-600' },
@@ -58,6 +58,7 @@ export default function CustomerDashboard() {
           {[
             { icon: FiBell, label: 'Notifications', link: '/notifications' },
             { icon: FiSettings, label: 'Profile Settings', link: '/profile-settings' },
+            { icon: FiMessageCircle, label: 'Product Reviews', link: '/reviews' },
             { icon: FiFileText, label: 'Support Tickets', link: '/support' },
           ].map((item) => {
             const Icon = item.icon;

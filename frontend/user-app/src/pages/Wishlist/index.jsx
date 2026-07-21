@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { Button, Card, EmptyState } from '../../../../shared/components/Common';
+import { Button, Card, EmptyState, LazyImage } from '../../../../shared/components/Common';
 import { toast } from 'react-hot-toast';
 import { FiHeart, FiTrash2 } from 'react-icons/fi';
 
@@ -25,7 +25,13 @@ export default function Wishlist() {
             <Card key={prod.id} className="flex flex-col gap-3 relative p-4 group">
               {/* Image Container */}
               <div className="aspect-[4/3] bg-gray-100 rounded-large overflow-hidden mb-2 relative">
-                <img src={prod.image} alt={prod.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                <LazyImage
+                  src={prod.image}
+                  alt={prod.name}
+                  className="w-full h-full group-hover:scale-105 transition-transform duration-300"
+                  loading="eager"
+                  fetchPriority="high"
+                />
                 <button
                   onClick={() => {
                     toggleWishlist(prod);

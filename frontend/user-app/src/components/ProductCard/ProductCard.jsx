@@ -1,7 +1,7 @@
 import React from 'react';
 import { FiShoppingCart, FiHeart } from 'react-icons/fi';
 import { useApp } from '../../context/AppContext';
-import { Card, Button } from '../../../../shared/components/Common';
+import { Card, Button, LazyImage } from '../../../../shared/components/Common';
 
 export const ProductCard = ({ product }) => {
   const { addToCart, toggleWishlist, isInWishlist } = useApp();
@@ -10,10 +10,12 @@ export const ProductCard = ({ product }) => {
   return (
     <Card hoverEffect className="flex flex-col h-full overflow-hidden group">
       <div className="relative aspect-square -mx-5 -mt-5 mb-4 overflow-hidden bg-gray-100">
-        <img
+        <LazyImage
           src={product.image}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="eager"
+          fetchPriority="high"
         />
         {product.discount > 0 && (
           <span className="absolute top-4 left-4 bg-danger text-white text-xs font-bold px-2.5 py-1 rounded-full">

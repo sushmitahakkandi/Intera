@@ -1,118 +1,39 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import axios from 'axios';
+import { io } from 'socket.io-client';
 
 const AppContext = createContext();
 
-// Sample product data based on the provided blueprint image
-const MOCK_PRODUCTS = [
-  {
-    id: 'p1',
-    name: 'Luxury Modern Sofa',
-    category: 'Sofa',
-    price: 24999,
-    originalPrice: 32999,
-    discount: 24,
-    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=600&q=80',
-    rating: 4.8,
-    reviewsCount: 256,
-    stock: 20,
-    material: 'Solid Wood, Fabric',
-    dimensions: '220cm x 90cm x 85cm',
-    colors: ['#A66A2C', '#2B2B2B', '#E5E5E5'],
-    description: 'Comfort meets elegance. Perfect for your modern home and cozy living. Crafted with high-resiliency foam cushions and durable textured fabric upholstery.'
-  },
-  {
-    id: 'p2',
-    name: 'Wooden Chair',
-    category: 'Chair',
-    price: 2499,
-    originalPrice: 4999,
-    discount: 50,
-    image: 'https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&w=600&q=80',
-    rating: 4.5,
-    reviewsCount: 112,
-    stock: 35,
-    material: 'Teak Wood',
-    dimensions: '60cm x 60cm x 90cm',
-    colors: ['#A66A2C', '#2B2B2B'],
-    description: 'Classic handcrafted wooden chair made of premium teak wood. Durable and ergonomically designed for maximum comfort.'
-  },
-  {
-    id: 'p3',
-    name: 'King Size Bed',
-    category: 'Bed',
-    price: 34999,
-    originalPrice: 45999,
-    discount: 23,
-    image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=600&q=80',
-    rating: 4.9,
-    reviewsCount: 88,
-    stock: 15,
-    material: 'Engineered Wood, Velvet Upholstery',
-    dimensions: '200cm x 180cm x 110cm',
-    colors: ['#2B2B2B', '#E5E5E5'],
-    description: 'Luxurious king-size bed with premium velvet headboard and solid support structure. Perfect for a restful sleep.'
-  },
-  {
-    id: 'p4',
-    name: 'Dining Table',
-    category: 'Dining',
-    price: 15999,
-    originalPrice: 19999,
-    discount: 20,
-    image: 'https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&w=600&q=80',
-    rating: 4.7,
-    reviewsCount: 64,
-    stock: 18,
-    material: 'Oak Wood, Steel Legs',
-    dimensions: '160cm x 90cm x 75cm',
-    colors: ['#A66A2C', '#2B2B2B'],
-    description: 'Modern 6-seater dining table with premium oak finish and powder-coated steel legs. Fits nicely into any dining space.'
-  },
-  {
-    id: 'p5',
-    name: 'Office Chair',
-    category: 'Chair',
-    price: 9999,
-    originalPrice: 12999,
-    discount: 23,
-    image: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=600&q=80',
-    rating: 4.6,
-    reviewsCount: 145,
-    stock: 25,
-    material: 'Mesh, Nylon Base',
-    dimensions: '65cm x 65cm x 120cm',
-    colors: ['#2B2B2B'],
-    description: 'Ergonomic high-back office chair with adjustable lumbar support, armrests, and headrest. Breathable mesh back for productivity.'
-  },
-  {
-    id: 'p6',
-    name: 'Center Table',
-    category: 'Tables',
-    price: 6999,
-    originalPrice: 8999,
-    discount: 22,
-    image: 'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=600&q=80',
-    rating: 4.4,
-    reviewsCount: 52,
-    stock: 40,
-    material: 'Glass, Metal Base',
-    dimensions: '90cm x 90cm x 45cm',
-    colors: ['#2B2B2B', '#E5E5E5'],
-    description: 'Elegant coffee table with tempered glass top and geometrical metal base. Perfect accent piece for your living room.'
-  }
-];
+// S3 Base URL - permanent cloud storage
+const S3_BASE = 'https://mahaveer-smart-furniture-hub.s3.eu-north-1.amazonaws.com';
+
+// API Base URL
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const CATEGORY_IMAGE_FALLBACKS = {
+  Sofa: `${S3_BASE}/cache/sofa/img-0.webp`,
+  Chair: `${S3_BASE}/cache/chair/img-0.webp`,
+  Bed: `${S3_BASE}/cache/bed/img-0.webp`,
+  Dining: `${S3_BASE}/cache/dining/img-0.webp`,
+  Tables: `${S3_BASE}/cache/tables/img-0.webp`,
+  Storage: `${S3_BASE}/cache/storage/img-0.webp`
+};
+
+const getFallbackImage = (category) => CATEGORY_IMAGE_FALLBACKS[category] || `${S3_BASE}/cache/sofa/img-0.webp`;
 
 export const AppProvider = ({ children }) => {
   // Authentication State
   const [user, setUser] = useState(() => {
-    // Initial mock login user for development and presentation
-    return {
-      name: 'Basavaraj H G',
-      email: 'basavaraj@gmail.com',
-      role: 'customer' // 'customer', 'admin', or 'seller'
-    };
+    try {
+      const stored = localStorage.getItem('mhv_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      return null;
+    }
   });
-  const [token, setToken] = useState('placeholder-jwt-token');
+  const [token, setToken] = useState(() => {
+    const stored = localStorage.getItem('mhv_token');
+    return stored && stored !== 'placeholder-jwt-token' ? stored : null;
+  });
 
   // Shopping Cart State
   const [cartItems, setCartItems] = useState([]);
@@ -125,57 +46,165 @@ export const AppProvider = ({ children }) => {
   const [adminSidebarCollapsed, setAdminSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Products List State (allows adding/editing for admin pages locally in state)
-  const [products, setProducts] = useState(MOCK_PRODUCTS);
+  // Products List State — always populated from DB, starts empty while fetching
+  const [products, setProducts] = useState([]);
+  const [productsLoaded, setProductsLoaded] = useState(false);
+  const [isBackendOffline, setIsBackendOffline] = useState(false);
 
-  // Categories list
+  // Categories list — images point directly to S3 (permanent, no localhost dependency)
   const [categories, setCategories] = useState([
-    { id: 'c1', name: 'Sofa', count: 12, image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=200&q=80' },
-    { id: 'c2', name: 'Chair', count: 28, image: 'https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&w=200&q=80' },
-    { id: 'c3', name: 'Bed', count: 15, image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=200&q=80' },
-    { id: 'c4', name: 'Dining', count: 8, image: 'https://images.unsplash.com/photo-1615066390971-03e4e1c36ddf?auto=format&fit=crop&w=200&q=80' },
-    { id: 'c5', name: 'Tables', count: 19, image: 'https://images.unsplash.com/photo-1533090161767-e6ffed986c88?auto=format&fit=crop&w=200&q=80' },
-    { id: 'c6', name: 'Storage', count: 10, image: 'https://images.unsplash.com/photo-1595428774223-ef52624120d2?auto=format&fit=crop&w=200&q=80' }
+    { id: 'c1', name: 'Sofa',    count: 450, image: `${S3_BASE}/categories/sofa-thumbnail.webp` },
+    { id: 'c2', name: 'Chair',   count: 401, image: `${S3_BASE}/categories/chair-thumbnail.webp` },
+    { id: 'c3', name: 'Bed',     count: 400, image: `${S3_BASE}/categories/bed-thumbnail.webp` },
+    { id: 'c4', name: 'Dining',  count: 350, image: `${S3_BASE}/categories/dining-thumbnail.webp` },
+    { id: 'c5', name: 'Tables',  count: 450, image: `${S3_BASE}/categories/tables-thumbnail.webp` },
+    { id: 'c6', name: 'Storage', count: 450, image: `${S3_BASE}/categories/storage-thumbnail.webp` }
   ]);
+
+  // Set Axios auth header
+  useEffect(() => {
+    if (token && token !== 'placeholder-jwt-token') {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
+    }
+  }, [token]);
+
+  // Load live seeded products from database
+  const loadRealData = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_BASE}/api/products?limit=2500&status=Active`);
+      const dbProducts = res.data.products || [];
+
+      if (dbProducts.length > 0) {
+        const normalized = dbProducts.map(item => {
+          const origPrice = item.price || 0;
+          const discPrice = item.discountPrice || origPrice;
+          const discountPct = origPrice > 0 ? Math.round(((origPrice - discPrice) / origPrice) * 100) : 0;
+          const categoryName = item.category?.name || 'Sofa';
+          const thumbnailUrl = item.thumbnailUrl && !item.thumbnailUrl.includes('/products/general/thumbnail.webp')
+            ? item.thumbnailUrl
+            : getFallbackImage(categoryName);
+
+          return {
+            id: item._id,
+            name: item.name,
+            category: categoryName,
+            price: discPrice,
+            originalPrice: origPrice,
+            discount: discountPct,
+            image: thumbnailUrl,
+            images: item.imageUrls ? Object.values(item.imageUrls).filter(Boolean) : [],
+            rating: item.rating || 5.0,
+            reviewsCount: item.reviewCount || 0,
+            stock: item.stock || 0,
+            material: item.material?.name || 'Wood',
+            color: item.color?.hex || '#8B4513',
+            colorName: item.color?.name || 'Brown',
+            dimensions: item.dimensions || 'N/A',
+            colors: [item.color?.hex || '#8B4513'],
+            description: item.description || '',
+            createdAt: item.createdAt || new Date(0)
+          };
+        });
+
+        setProducts(normalized);
+        setProductsLoaded(true);
+        setIsBackendOffline(false);
+
+        const counts = {};
+        normalized.forEach(p => {
+          const cat = p.category;
+          counts[cat] = (counts[cat] || 0) + 1;
+        });
+
+        setCategories(prev => prev.map(c => ({
+          ...c,
+          count: counts[c.name] || c.count
+        })));
+      }
+
+      return true;
+    } catch (err) {
+      console.error("Error fetching db products inside user-app context:", err);
+      setIsBackendOffline(true);
+      setProductsLoaded(true);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCoupons = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/coupons/active`);
+      setCoupons(res.data || []);
+    } catch (err) {
+      console.error("Error loading coupons in user app:", err);
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    let retryTimeoutId;
+
+    const run = async () => {
+      const ok = await loadRealData();
+      loadCoupons();
+      if (!ok && !cancelled) {
+        retryTimeoutId = setTimeout(run, 5000);
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+      if (retryTimeoutId) {
+        clearTimeout(retryTimeoutId);
+      }
+    };
+  }, []);
+
+  // Connect to Socket.io for real-time storefront updates
+  useEffect(() => {
+    const socket = io(API_BASE);
+
+    socket.on('connect', () => {
+      console.log('Socket.io: Connected to backend on user-app');
+    });
+
+    socket.on('catalog_changed', () => {
+      console.log('Socket.io: Received catalog_changed event. Fetching updated storefront active products...');
+      loadRealData();
+      loadCoupons();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
 
   // Orders State (for customer and admin side displays)
-  const [orders, setOrders] = useState([
-    {
-      id: 'MHV123456',
-      customer: 'Basavaraj H G',
-      email: 'basavaraj@gmail.com',
-      date: '20 July 2026',
-      total: 36997,
-      status: 'Delivered',
-      items: [
-        { name: 'Luxury Modern Sofa', qty: 1, price: 24999 },
-        { name: 'Center Table', qty: 1, price: 6999 },
-        { name: 'Wooden Chair', qty: 2, price: 2499 }
-      ]
-    },
-    {
-      id: 'MHV123457',
-      customer: 'Sneha M',
-      email: 'sneha@gmail.com',
-      date: '02 July 2026',
-      total: 28499,
-      status: 'Shipped',
-      items: [
-        { name: 'King Size Bed', qty: 1, price: 34999 }
-      ]
-    },
-    {
-      id: 'MHV123458',
-      customer: 'Rahul R',
-      email: 'rahul@gmail.com',
-      date: '04 July 2026',
-      total: 17939,
-      status: 'Pending',
-      items: [
-        { name: 'Dining Table', qty: 1, price: 15999 }
-      ]
+  const [orders, setOrders] = useState([]);
+
+  // Fetch orders from database
+  const fetchOrders = async (email) => {
+    try {
+      const url = email ? `${API_BASE}/api/orders?email=${email}` : `${API_BASE}/api/orders`;
+      const res = await axios.get(url);
+      setOrders(res.data);
+    } catch (err) {
+      console.error("Error loading orders from backend:", err);
     }
-  ]);
+  };
+
+  useEffect(() => {
+    if (user?.email) {
+      fetchOrders(user.email);
+    }
+  }, [user]);
 
   // Coupons State
   const [coupons, setCoupons] = useState([
@@ -185,24 +214,56 @@ export const AppProvider = ({ children }) => {
   ]);
 
   // Auth Functions
-  const login = (email, password, role = 'customer') => {
-    setUser({
-      name: email.split('@')[0],
-      email: email,
-      role: role
-    });
-    setToken('sample-jwt-token-after-login');
+  const login = async (email, password, role = 'customer') => {
+    try {
+      setLoading(true);
+      const res = await axios.post(`${API_BASE}/api/auth/login`, { email, password });
+      const { token: jwtToken, user: userData } = res.data;
+      setUser(userData);
+      setToken(jwtToken);
+      localStorage.setItem('mhv_user', JSON.stringify(userData));
+      localStorage.setItem('mhv_token', jwtToken);
+      return userData;
+    } catch (err) {
+      const errMsg = err.response?.data?.error || 'Login failed';
+      throw new Error(errMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = async (name, email, password, phone) => {
+    try {
+      setLoading(true);
+      const res = await axios.post(`${API_BASE}/api/auth/register`, { name, email, password, phone });
+      const { token: jwtToken, user: userData } = res.data;
+      setUser(userData);
+      setToken(jwtToken);
+      localStorage.setItem('mhv_user', JSON.stringify(userData));
+      localStorage.setItem('mhv_token', jwtToken);
+      return userData;
+    } catch (err) {
+      const errMsg = err.response?.data?.error || 'Registration failed';
+      throw new Error(errMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
+    localStorage.removeItem('mhv_user');
+    localStorage.removeItem('mhv_token');
     setCartItems([]);
+    setOrders([]);
   };
 
   const switchRole = (newRole) => {
     if (user) {
-      setUser({ ...user, role: newRole });
+      const updated = { ...user, role: newRole };
+      setUser(updated);
+      localStorage.setItem('mhv_user', JSON.stringify(updated));
     }
   };
 
@@ -269,14 +330,18 @@ export const AppProvider = ({ children }) => {
         setUser,
         token,
         login,
+        register,
         logout,
         switchRole,
         products,
         setProducts,
+        productsLoaded,
+        isBackendOffline,
         categories,
         setCategories,
         orders,
         setOrders,
+        fetchOrders,
         coupons,
         setCoupons,
         cartItems,

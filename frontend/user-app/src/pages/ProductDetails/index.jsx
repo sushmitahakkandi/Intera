@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Button, Card, Spinner, ErrorState } from '../../../../shared/components/Common';
+import { Button, Card, Spinner, ErrorState, LazyImage } from '../../../../shared/components/Common';
 import { FiHeart, FiShoppingCart, FiArrowLeft, FiStar, FiImage, FiRotateCw } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
 import { ProductCard } from '../../components/ProductCard/ProductCard';
@@ -115,7 +115,13 @@ export default function ProductDetails() {
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
               >
-                <img src={mainImage} alt={product.name} className="w-full h-full object-cover transition-all duration-300" />
+                <LazyImage
+                  src={mainImage}
+                  alt={product.name}
+                  className="w-full h-full"
+                  loading="eager"
+                  fetchPriority="high"
+                />
                 <div 
                   className="absolute w-[150px] h-[150px] border-2 border-white rounded-full pointer-events-none shadow-premium bg-no-repeat bg-[length:400%_400%]"
                   style={zoomStyle}
@@ -130,7 +136,12 @@ export default function ProductDetails() {
                       mainImage === img ? 'border-primary shadow-md' : 'border-gray-100 opacity-60 hover:opacity-100'
                     }`}
                   >
-                    <img src={img} alt={`thumbnail-${i}`} className="w-full h-full object-cover" loading="lazy" />
+                    <LazyImage
+                      src={img}
+                      alt={`thumbnail-${i}`}
+                      className="w-full h-full"
+                      loading="lazy"
+                    />
                   </button>
                 ))}
               </div>

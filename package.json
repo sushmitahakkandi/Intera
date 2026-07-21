@@ -11,8 +11,11 @@
     "dev:user": "npm run dev --workspace=frontend/user-app",
     "dev:admin": "npm run dev --workspace=frontend/admin-app",
     "dev:backend": "npm run dev --workspace=backend",
-    "dev": "npm run dev:user",
+    "dev": "concurrently --kill-others \"npm run dev:backend\" \"npm run dev:user\" \"npm run dev:admin\"",
     "build:user": "npm run build --workspace=frontend/user-app",
     "build:admin": "npm run build --workspace=frontend/admin-app"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
   }
 }

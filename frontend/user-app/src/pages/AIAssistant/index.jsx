@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Button, Avatar } from '../../../../shared/components/Common';
+import { Card, Button, Avatar, LazyImage } from '../../../../shared/components/Common';
 import { FiSend } from 'react-icons/fi';
 import { useApp } from '../../context/AppContext';
 import { toast } from 'react-hot-toast';
@@ -82,7 +82,13 @@ export default function AIAssistant() {
                         className="w-48 bg-white border border-gray-150 rounded-large overflow-hidden shadow-sm flex-shrink-0 flex flex-col justify-between"
                       >
                         <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
-                          <img src={prod.image} alt={prod.name} className="w-full h-full object-cover" />
+                          <LazyImage
+                            src={prod.image}
+                            alt={prod.name}
+                            className="w-full h-full"
+                            loading="eager"
+                            fetchPriority="high"
+                          />
                         </div>
                         <div className="p-3 flex-grow flex flex-col justify-between">
                           <div>

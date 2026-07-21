@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { Button, Card, EmptyState } from '../../../../shared/components/Common';
+import { Button, Card, EmptyState, LazyImage } from '../../../../shared/components/Common';
 import { FiTrash2, FiArrowRight, FiTag } from 'react-icons/fi';
 import { toast } from 'react-hot-toast';
+import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Cart() {
   const navigate = useNavigate();
-  const { cartItems, updateQuantity, removeFromCart, cartTotal } = useApp();
+  const { cartItems, updateQuantity, removeFromCart, cartTotal, coupons } = useApp();
   const [couponCode, setCouponCode] = useState('');
-  const [discountPercent, setDiscountPercent] = useState(0);
+  const [discountType, setDiscountType] = useState('percentage');
+  const [discountValue, setDiscountValue] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState('');
 
   if (cartItems.length === 0) {
@@ -28,25 +32,38 @@ export default function Cart() {
     );
   }
 
-  const handleApplyCoupon = (e) => {
+  const handleApplyCoupon = async (e) => {
     e.preventDefault();
     const code = couponCode.trim().toUpperCase();
-    if (code === 'SUMMER20') {
-      setDiscountPercent(20);
-      setAppliedCoupon('SUMMER20');
-      toast.success('Coupon SUMMER20 applied: 20% discount!');
-    } else if (code === 'MHV10') {
-      setDiscountPercent(10);
-      setAppliedCoupon('MHV10');
-      toast.success('Coupon MHV10 applied: 10% discount!');
-    } else if (code === '') {
+    if (code === '') {
       toast.error('Please enter a coupon code.');
-    } else {
-      toast.error('Invalid coupon code. Try SUMMER20 or MHV10.');
+      return;
+    }
+
+    try {
+      toast.loading('Validating coupon...', { id: 'validate-coupon-toast' });
+      const res = await axios.post(`${API_BASE}/api/coupons/validate`, {
+        code,
+        subtotal: cartTotal
+      });
+
+      const { discountType: type, discountValue: val } = res.data;
+      setDiscountType(type);
+      setDiscountValue(val);
+      setAppliedCoupon(code);
+
+      const discountLabel = type === 'percentage' ? `${val}%` : `₹${val.toLocaleString()}`;
+      toast.success(`Coupon ${code} applied: ${discountLabel} discount!`, { id: 'validate-coupon-toast' });
+    } catch (err) {
+      console.error(err);
+      const errMsg = err.response?.data?.error || 'Invalid coupon code.';
+      toast.error(errMsg, { id: 'validate-coupon-toast' });
     }
   };
 
-  const discountAmount = Math.round(cartTotal * (discountPercent / 100));
+  const discountAmount = discountType === 'percentage'
+    ? Math.round(cartTotal * (discountValue / 100))
+    : Math.min(discountValue, cartTotal);
   const finalTotal = cartTotal - discountAmount;
 
   // Total items count
@@ -69,7 +86,13 @@ export default function Cart() {
           {cartItems.map((item) => (
             <Card key={item.id} className="flex gap-4 items-center p-4">
               <div className="w-20 h-20 bg-gray-100 rounded-large overflow-hidden flex-shrink-0 border border-gray-100">
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                <LazyImage
+                  src={item.image}
+                  alt={item.name}
+                  className="w-full h-full"
+                  loading="eager"
+                  fetchPriority="high"
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="font-bold text-gray-800 text-sm truncate">{item.name}</h4>
@@ -133,13 +156,36 @@ export default function Cart() {
                 <button
                   onClick={() => {
                     setAppliedCoupon('');
-                    setDiscountPercent(0);
+                    setDiscountValue(0);
+                    setDiscountType('percentage');
                     toast.success('Coupon removed');
                   }}
                   className="hover:underline"
                 >
                   Remove
                 </button>
+              </div>
+            )}
+            {coupons && coupons.length > 0 && (
+              <div className="mt-4 border-t border-gray-100 pt-3">
+                <span className="text-[10px] uppercase font-extrabold text-gray-400 block mb-2">Available Coupons</span>
+                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+                  {coupons.map((coupon) => (
+                    <div
+                      key={coupon._id || coupon.id}
+                      onClick={() => setCouponCode(coupon.code)}
+                      className="flex items-center justify-between p-2 bg-gray-50 hover:bg-gray-100/70 border border-dashed border-gray-200 rounded-large cursor-pointer transition-colors"
+                    >
+                      <div>
+                        <span className="text-xs font-black text-gray-800 font-mono tracking-wider">{coupon.code}</span>
+                        <p className="text-[9px] text-gray-400 font-semibold mt-0.5">{coupon.description || `Get discount with code ${coupon.code}`}</p>
+                      </div>
+                      <span className="text-[10px] font-extrabold text-primary bg-primary-light/20 px-2.5 py-0.5 rounded-full whitespace-nowrap">
+                        {coupon.discountType === 'percentage' ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </Card>

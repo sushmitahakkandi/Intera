@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useApp } from '../../context/AppContext';
 import { Input, Button } from '../../../../shared/components/Common';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { FcGoogle } from 'react-icons/fc';
 
 export default function Register() {
+  const { register } = useApp();
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '',
@@ -41,11 +43,16 @@ export default function Register() {
     return Object.keys(tempErrors).length === 0;
   };
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     if (validate()) {
-      toast.success('Registration successful! Please verify OTP.');
-      navigate('/verify-otp');
+      try {
+        await register(form.name, form.email, form.password, form.phone);
+        toast.success('Registration successful!');
+        navigate('/');
+      } catch (error) {
+        toast.error(error.message || 'Registration failed');
+      }
     } else {
       toast.error('Please fix the validation errors.');
     }

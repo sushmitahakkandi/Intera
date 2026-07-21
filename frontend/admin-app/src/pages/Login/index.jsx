@@ -22,12 +22,16 @@ export default function AdminLogin() {
     return Object.keys(errs).length === 0;
   };
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    login(email, password, 'admin');
-    toast.success('Welcome back, Administrator!');
-    navigate('/admin');
+    try {
+      await login(email, password, 'admin');
+      toast.success('Welcome back, Administrator!');
+      navigate('/admin');
+    } catch (error) {
+      toast.error(error.message || 'Invalid admin credentials');
+    }
   };
 
   return (

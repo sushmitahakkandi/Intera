@@ -15,7 +15,7 @@ const VIEW_TYPES = [
   { value: '360', label: '360 View Image' }
 ];
 
-export default function ImageUploadZone({ productName, category, onUploadComplete }) {
+export default function ImageUploadZone({ productName, category, productId, onUploadComplete, initialFiles = [] }) {
   const [files, setFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
@@ -108,8 +108,8 @@ export default function ImageUploadZone({ productName, category, onUploadComplet
       return;
     }
 
-    if (!productName || !category) {
-      toast.error('Product Name and Category are required before uploading images');
+    if (!productName || !category || !productId) {
+      toast.error('Product Name, Category, and Product ID are required before uploading images');
       return;
     }
 
@@ -138,8 +138,10 @@ export default function ImageUploadZone({ productName, category, onUploadComplet
         formData.append('name', productName);
         formData.append('category', category);
         formData.append('viewType', f.viewType);
+        formData.append('productId', productId);
 
-        const response = await fetch('http://localhost:5000/api/upload/product', {
+        const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const response = await fetch(`${API_BASE}/api/upload/product`, {
           method: 'POST',
           body: formData
         });
@@ -158,7 +160,7 @@ export default function ImageUploadZone({ productName, category, onUploadComplet
               ...item,
               status: 'success',
               progress: 100,
-              url: resData.data.url
+              url: resData.data.key // Store the key, since storageService expects S3 key or relative path
             };
           }
           return item;
@@ -171,17 +173,43 @@ export default function ImageUploadZone({ productName, category, onUploadComplet
     }
 
     // Pass uploaded URLs back to parent
-    const uploadedUrls = files
-      .map(f => f.url)
-      .filter(url => url !== '');
-      
-    const thumbnailObj = files.find(f => f.viewType === 'thumbnail' && f.status === 'success');
-    const thumbnailUrl = thumbnailObj ? thumbnailObj.url : (uploadedUrls[0] || '');
+    const viewMap = {};
+    const gallery = [];
+    const images360 = [];
+    const materials = [];
+
+    files.forEach(f => {
+      if (f.status === 'success' && f.url) {
+        if (f.viewType === 'thumbnail') {
+          viewMap.thumbnail = f.url;
+        } else if (f.viewType === '360') {
+          images360.push(f.url);
+        } else if (f.viewType === 'material') {
+          materials.push(f.url);
+        } else {
+          viewMap[f.viewType] = f.url;
+          gallery.push(f.url);
+        }
+      }
+    });
+
+    // Provide sensible fallbacks if specific view types are not selected
+    const thumbnailUrl = viewMap.thumbnail || gallery[0] || '';
+    const frontUrl = viewMap.front || gallery[0] || thumbnailUrl || '';
 
     if (onUploadComplete) {
       onUploadComplete({
-        images: uploadedUrls,
-        thumbnail: thumbnailUrl
+        thumbnail: thumbnailUrl,
+        front: frontUrl,
+        side: viewMap.side || '',
+        back: viewMap.back || '',
+        top: viewMap.top || '',
+        lifestyle: viewMap.lifestyle || '',
+        materialCloseUp: viewMap.material || '',
+        dimensionImage: viewMap.dimension || '',
+        gallery,
+        images360,
+        materials
       });
     }
     toast.success('Upload process complete!');

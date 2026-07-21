@@ -58,12 +58,25 @@ export default function UserProfile() {
 
   const handleUpdateProfile = (e) => {
     e.preventDefault();
+    if (!profileForm.name.trim()) { toast.error('Full name is required'); return; }
+    if (!profileForm.email.trim()) { toast.error('Email address is required'); return; }
+    if (!/\S+@\S+\.\S+/.test(profileForm.email)) { toast.error('Enter a valid email address'); return; }
+    if (!profileForm.phone.trim()) { toast.error('Phone number is required'); return; }
+    if (!/^\d{10}$/.test(profileForm.phone.replace(/[-+ ]/g, ''))) { toast.error('Phone must be 10 digits'); return; }
     setUser({ ...user, name: profileForm.name, email: profileForm.email });
     toast.success('Profile details updated!');
   };
 
   const handleAddAddress = (e) => {
     e.preventDefault();
+    if (!addressForm.name.trim()) { toast.error('Name / label is required'); return; }
+    if (!addressForm.phone.trim()) { toast.error('Phone number is required'); return; }
+    if (!/^\d{10}$/.test(addressForm.phone.replace(/[-+ ]/g, ''))) { toast.error('Phone must be 10 digits'); return; }
+    if (!addressForm.street.trim()) { toast.error('Street address is required'); return; }
+    if (!addressForm.city.trim()) { toast.error('City is required'); return; }
+    if (!addressForm.state.trim()) { toast.error('State is required'); return; }
+    if (!addressForm.pincode.trim()) { toast.error('Pincode is required'); return; }
+    if (!/^\d{6}$/.test(addressForm.pincode)) { toast.error('Pincode must be 6 digits'); return; }
     const newAddress = {
       ...addressForm,
       id: Date.now(),
@@ -82,6 +95,16 @@ export default function UserProfile() {
 
   const handleAddPayment = (e) => {
     e.preventDefault();
+    if (paymentForm.type === 'Card') {
+      if (!paymentForm.name.trim()) { toast.error('Cardholder name is required'); return; }
+      if (!paymentForm.number.trim()) { toast.error('Card number is required'); return; }
+      if (paymentForm.number.replace(/\s/g, '').length < 16) { toast.error('Enter a valid 16-digit card number'); return; }
+      if (!paymentForm.expiry.trim()) { toast.error('Expiry date is required'); return; }
+      if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(paymentForm.expiry)) { toast.error('Expiry must be in MM/YY format'); return; }
+    } else {
+      if (!paymentForm.number.trim()) { toast.error('UPI ID is required'); return; }
+      if (!paymentForm.number.includes('@')) { toast.error('Enter a valid UPI ID (e.g. user@okaxis)'); return; }
+    }
     const newPayment = {
       id: Date.now(),
       type: paymentForm.type,

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { motion } from 'framer-motion';
+import { LazyImage } from '../../../../shared/components/Common';
 
 export default function Collections() {
   const { categories } = useApp();
@@ -26,7 +27,7 @@ export default function Collections() {
           >
             {/* Background Image overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/10 z-10 transition-opacity duration-300" />
-            <img
+            <LazyImage
               src={cat.image || 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80'}
               alt={cat.name}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

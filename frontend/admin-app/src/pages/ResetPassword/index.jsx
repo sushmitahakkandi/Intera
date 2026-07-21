@@ -1,14 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input, Button } from '../../../../shared/components/Common';
 import { toast, Toaster } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { FiLock } from 'react-icons/fi';
+import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AdminResetPassword() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ password: '', confirmPassword: '' });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+
+  useEffect(() => {
+    const savedPhone = localStorage.getItem('admin_recovery_phone');
+    const savedOtp = localStorage.getItem('admin_recovery_otp');
+    if (!savedPhone || !savedOtp) {
+      toast.error('Session expired or missing. Please initiate password recovery again.');
+      navigate('/admin/forgot-password');
+    } else {
+      setPhone(savedPhone);
+      setOtp(savedOtp);
+    }
+  }, [navigate]);
 
   const validate = () => {
     const errs = {};
@@ -19,11 +37,31 @@ export default function AdminResetPassword() {
     return Object.keys(errs).length === 0;
   };
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    toast.success('Admin password reset successfully!');
-    navigate('/admin/login');
+
+    try {
+      setLoading(true);
+      toast.loading('Resetting password...', { id: 'reset-admin-pwd' });
+
+      await axios.post(`${API_BASE}/api/auth/reset-password-phone`, {
+        phone,
+        otp,
+        newPassword: form.password
+      });
+
+      toast.success('Admin password reset successfully! Please log in with your new password.', { id: 'reset-admin-pwd' });
+      localStorage.removeItem('admin_recovery_phone');
+      localStorage.removeItem('admin_recovery_otp');
+      localStorage.removeItem('admin_demo_otp');
+      navigate('/admin/login');
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.error || 'Failed to reset password.', { id: 'reset-admin-pwd' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -43,14 +81,30 @@ export default function AdminResetPassword() {
           <div className="inline-flex items-center justify-center w-14 h-14 bg-primary/20 rounded-full mb-4">
             <FiLock className="text-primary" size={28} />
           </div>
-          <h2 className="text-lg font-bold text-white mb-1">Reset Password</h2>
-          <p className="text-xs text-gray-500 font-semibold">Set a new strong password for your admin account</p>
+          <h2 className="text-lg font-bold text-white mb-1">Reset Admin Password</h2>
+          <p className="text-xs text-gray-400 font-semibold">Set a new strong password for account: <span className="text-primary font-bold">{phone}</span></p>
         </div>
 
         <form onSubmit={onSubmit} className="flex flex-col gap-1">
-          <Input label="New Password" type="password" placeholder="••••••••" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} error={errors.password} />
-          <Input label="Confirm Password" type="password" placeholder="••••••••" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} error={errors.confirmPassword} />
-          <Button type="submit" className="w-full mt-4">Save New Password</Button>
+          <Input
+            label="New Password"
+            type="password"
+            placeholder="••••••••"
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            error={errors.password}
+          />
+          <Input
+            label="Confirm Password"
+            type="password"
+            placeholder="••••••••"
+            value={form.confirmPassword}
+            onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+            error={errors.confirmPassword}
+          />
+          <Button type="submit" className="w-full mt-4" disabled={loading}>
+            {loading ? 'Saving...' : 'Save New Password'}
+          </Button>
         </form>
       </motion.div>
     </div>

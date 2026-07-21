@@ -11,7 +11,10 @@ import AuthLayout from '../layouts/AuthLayout/AuthLayout';
 const Home = lazy(() => import('../pages/Home'));
 const Shop = lazy(() => import('../pages/Shop'));
 const Collections = lazy(() => import('../pages/Collections'));
-const AIRoomVisualizer = lazy(() => import('../pages/AIRoomVisualizer'));
+const AIDashboard = lazy(() => import('../pages/AIDashboard'));
+const AIRoomRecommendation = lazy(() => import('../pages/AIRoomRecommendation'));
+const AIColorMatching = lazy(() => import('../pages/AIColorMatching'));
+const AIInteriorAssistant = lazy(() => import('../pages/AIInteriorAssistant'));
 const AIAssistant = lazy(() => import('../pages/AIAssistant'));
 const ProductDetails = lazy(() => import('../pages/ProductDetails'));
 const Cart = lazy(() => import('../pages/Cart'));
@@ -48,7 +51,14 @@ export default function AppRoutes() {
           <Route path="/" element={<Home />} />
           <Route path="shop" element={<Shop />} />
           <Route path="collections" element={<Collections />} />
-          <Route path="ai-decor" element={<AIRoomVisualizer />} />
+          
+          {/* AI Decor routes */}
+          <Route path="ai-decor" element={<AIDashboard />} />
+          <Route path="ai-decor/dashboard" element={<AIDashboard />} />
+          <Route path="ai-decor/room-recommendation" element={<AIRoomRecommendation />} />
+          <Route path="ai-decor/color-matching" element={<AIColorMatching />} />
+          <Route path="ai-decor/interior-assistant" element={<AIInteriorAssistant />} />
+
           <Route path="ai-assistant" element={<AIAssistant />} />
           <Route path="product/:id" element={<ProductDetails />} />
           <Route path="cart" element={<Cart />} />

@@ -14,8 +14,6 @@ export default function Shop() {
   const [selectedCategory, setSelectedCategory] = useState(categoryParam || null);
   const [searchVal, setSearchVal] = useState(searchParam || '');
   const [priceLimit, setPriceLimit] = useState(150000);
-  const [selectedMaterial, setSelectedMaterial] = useState(null);
-  const [selectedColor, setSelectedColor] = useState(null);
   const [sortBy, setSortBy] = useState('popular');
 
   useEffect(() => {
@@ -33,10 +31,8 @@ export default function Shop() {
       ? prod.name.toLowerCase().includes(searchVal.toLowerCase()) ||
         prod.description.toLowerCase().includes(searchVal.toLowerCase())
       : true;
-    const matchesMaterial = selectedMaterial ? prod.material?.toLowerCase() === selectedMaterial.toLowerCase() : true;
-    const matchesColor = selectedColor ? prod.color?.toLowerCase() === selectedColor.toLowerCase() : true;
 
-    return matchesCategory && matchesPrice && matchesSearch && matchesMaterial && matchesColor;
+    return matchesCategory && matchesPrice && matchesSearch;
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
@@ -67,10 +63,6 @@ export default function Shop() {
             onSelectCategory={handleCategorySelect}
             currentPrice={priceLimit}
             onPriceChange={setPriceLimit}
-            selectedMaterial={selectedMaterial}
-            onSelectMaterial={setSelectedMaterial}
-            selectedColor={selectedColor}
-            onSelectColor={setSelectedColor}
           />
         </aside>
 

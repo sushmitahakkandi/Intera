@@ -4,9 +4,12 @@ import { useApp } from '../../context/AppContext';
 import { Button, Card, Input, Stepper } from '../../../../shared/components/Common';
 import { toast } from 'react-hot-toast';
 import { FiMapPin, FiCreditCard, FiSmartphone, FiDollarSign } from 'react-icons/fi';
+import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Checkout() {
-  const { cartItems, cartTotal, clearCart } = useApp();
+  const { cartItems, cartTotal, clearCart, user, fetchOrders } = useApp();
   const navigate = useNavigate();
   const [step, setStep] = useState(0); // 0: Address, 1: Payment, 2: Review
 
@@ -20,7 +23,7 @@ export default function Checkout() {
   }, []);
 
   const [address, setAddress] = useState({
-    name: 'Basavaraj H G',
+    name: user?.name || 'Basavaraj H G',
     phone: '9741212888',
     street: 'Davangere Main Road',
     city: 'Davanagere',
@@ -30,13 +33,83 @@ export default function Checkout() {
 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
+  const [upiId, setUpiId] = useState('');
+  const [cardForm, setCardForm] = useState({ number: '', expiry: '', cvv: '' });
+  const [addrErrors, setAddrErrors] = useState({});
+  const [payErrors, setPayErrors] = useState({});
 
-  const handlePlaceOrder = () => {
-    toast.success('Order Placed Successfully!');
-    clearCart();
-    sessionStorage.removeItem('checkoutDiscount');
-    sessionStorage.removeItem('checkoutCoupon');
-    navigate('/order-tracking?orderId=MHV123456');
+  const validateAddress = () => {
+    const errs = {};
+    if (!address.name.trim()) errs.name = 'Full name is required';
+    if (!address.phone.trim()) errs.phone = 'Phone number is required';
+    else if (!/^\d{10}$/.test(address.phone.replace(/[-+ ]/g, ''))) errs.phone = 'Enter a valid 10-digit phone number';
+    if (!address.street.trim()) errs.street = 'Street address is required';
+    if (!address.city.trim()) errs.city = 'City is required';
+    if (!address.pincode.trim()) errs.pincode = 'Pincode is required';
+    else if (!/^\d{6}$/.test(address.pincode)) errs.pincode = 'Pincode must be 6 digits';
+    setAddrErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const validatePayment = () => {
+    const errs = {};
+    if (paymentMethod === 'UPI') {
+      if (!upiId.trim()) errs.upiId = 'UPI ID is required';
+      else if (!upiId.includes('@')) errs.upiId = 'Enter a valid UPI ID (e.g. user@okaxis)';
+    }
+    if (paymentMethod === 'Card') {
+      if (!cardForm.number.trim()) errs.number = 'Card number is required';
+      else if (cardForm.number.replace(/\s/g, '').length < 16) errs.number = 'Enter a valid 16-digit card number';
+      if (!cardForm.expiry.trim()) errs.expiry = 'Expiry date is required';
+      else if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardForm.expiry)) errs.expiry = 'Use MM/YY format';
+      if (!cardForm.cvv.trim()) errs.cvv = 'CVV is required';
+      else if (!/^\d{3,4}$/.test(cardForm.cvv)) errs.cvv = 'CVV must be 3–4 digits';
+    }
+    setPayErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handlePlaceOrder = async () => {
+    try {
+      const orderPayload = {
+        customerName: address.name,
+        email: user?.email || 'customer@gmail.com',
+        phone: address.phone,
+        items: cartItems.map(item => ({
+          productId: item.id.startsWith('p') && item.id.length < 5 ? null : item.id,
+          name: item.name,
+          qty: item.quantity,
+          price: item.price
+        })),
+        total: finalTotal,
+        paymentMethod,
+        shippingAddress: {
+          name: address.name,
+          phone: address.phone,
+          street: address.street,
+          city: address.city,
+          state: address.state,
+          pincode: address.pincode
+        }
+      };
+
+      const res = await axios.post(`${API_BASE}/api/orders`, orderPayload);
+      const createdOrder = res.data.order;
+
+      toast.success('Order Placed Successfully!');
+      clearCart();
+      sessionStorage.removeItem('checkoutDiscount');
+      sessionStorage.removeItem('checkoutCoupon');
+      
+      if (user?.email) {
+        fetchOrders(user.email);
+      }
+
+      navigate(`/order-tracking?orderId=${createdOrder.orderId}`);
+    } catch (error) {
+      console.error("Error placing order:", error);
+      toast.error(error.response?.data?.error || 'Failed to place order');
+    }
   };
 
   const steps = ['Address', 'Payment', 'Order Review'];
@@ -83,7 +156,10 @@ export default function Checkout() {
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
-                    setIsEditingAddress(false);
+                    if (validateAddress()) {
+                      setIsEditingAddress(false);
+                      setAddrErrors({});
+                    }
                   }}
                   className="flex flex-col gap-2"
                 >
@@ -91,19 +167,20 @@ export default function Checkout() {
                     label="Full Name"
                     value={address.name}
                     onChange={(e) => setAddress({ ...address, name: e.target.value })}
-                    required
+                    error={addrErrors.name}
                   />
                   <Input
                     label="Phone Number"
+                    type="tel"
                     value={address.phone}
                     onChange={(e) => setAddress({ ...address, phone: e.target.value })}
-                    required
+                    error={addrErrors.phone}
                   />
                   <Input
                     label="Street Details"
                     value={address.street}
                     onChange={(e) => setAddress({ ...address, street: e.target.value })}
-                    required
+                    error={addrErrors.street}
                   />
                   <div className="grid grid-cols-3 gap-4">
                     <div className="col-span-2">
@@ -111,14 +188,14 @@ export default function Checkout() {
                         label="City"
                         value={address.city}
                         onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                        required
+                        error={addrErrors.city}
                       />
                     </div>
                     <Input
                       label="Pincode"
                       value={address.pincode}
                       onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
-                      required
+                      error={addrErrors.pincode}
                     />
                   </div>
                   <Button type="submit" className="mt-4">
@@ -183,16 +260,41 @@ export default function Checkout() {
 
               {paymentMethod === 'UPI' && (
                 <div className="p-4 bg-gray-50 border border-gray-100 rounded-large">
-                  <Input label="Enter UPI ID" placeholder="e.g. user@okaxis" />
+                  <Input
+                    label="Enter UPI ID"
+                    placeholder="e.g. user@okaxis"
+                    value={upiId}
+                    onChange={(e) => { setUpiId(e.target.value); setPayErrors(prev => ({ ...prev, upiId: '' })); }}
+                    error={payErrors.upiId}
+                  />
                 </div>
               )}
 
               {paymentMethod === 'Card' && (
                 <div className="flex flex-col gap-3 p-4 bg-gray-50 border border-gray-100 rounded-large">
-                  <Input label="Card Number" placeholder="e.g. 4321 8765 9012 3456" />
+                  <Input
+                    label="Card Number"
+                    placeholder="e.g. 4321 8765 9012 3456"
+                    value={cardForm.number}
+                    onChange={(e) => { setCardForm({ ...cardForm, number: e.target.value }); setPayErrors(prev => ({ ...prev, number: '' })); }}
+                    error={payErrors.number}
+                  />
                   <div className="grid grid-cols-2 gap-4">
-                    <Input label="Expiry Date" placeholder="MM/YY" />
-                    <Input label="CVV" placeholder="•••" type="password" />
+                    <Input
+                      label="Expiry Date"
+                      placeholder="MM/YY"
+                      value={cardForm.expiry}
+                      onChange={(e) => { setCardForm({ ...cardForm, expiry: e.target.value }); setPayErrors(prev => ({ ...prev, expiry: '' })); }}
+                      error={payErrors.expiry}
+                    />
+                    <Input
+                      label="CVV"
+                      placeholder="•••"
+                      type="password"
+                      value={cardForm.cvv}
+                      onChange={(e) => { setCardForm({ ...cardForm, cvv: e.target.value }); setPayErrors(prev => ({ ...prev, cvv: '' })); }}
+                      error={payErrors.cvv}
+                    />
                   </div>
                 </div>
               )}
@@ -201,7 +303,9 @@ export default function Checkout() {
                 <Button variant="ghost" onClick={() => setStep(0)}>
                   Go Back
                 </Button>
-                <Button onClick={() => setStep(2)}>
+                <Button onClick={() => {
+                  if (validatePayment()) setStep(2);
+                }}>
                   Continue to Review
                 </Button>
               </div>

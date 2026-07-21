@@ -1,60 +1,85 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button, Textarea, Modal } from '../../../../shared/components/Common';
 import { toast } from 'react-hot-toast';
-import { FiStar, FiPlus, FiTrash2, FiMessageCircle } from 'react-icons/fi';
+import { FiStar, FiPlus, FiTrash2, FiMessageCircle, FiRefreshCw } from 'react-icons/fi';
+import { useApp } from '../../context/AppContext';
+import axios from 'axios';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function Reviews() {
-  const [reviews, setReviews] = useState([
-    {
-      id: 1,
-      productName: 'Luxury Modern Sofa',
-      productImage: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=150&q=80',
-      rating: 5,
-      comment: 'Super comfortable cushions, beautiful premium linen cover. Highly recommended for standard living rooms!',
-      date: '20 July 2025'
-    },
-    {
-      id: 2,
-      productName: 'Ergonomic Office Chair',
-      productImage: 'https://images.unsplash.com/photo-1505797149-43b0069ec26b?auto=format&fit=crop&w=150&q=80',
-      rating: 4,
-      comment: 'Excellent lumbar support and height adjustable mechanics. Wheels slide very smoothly.',
-      date: '15 June 2025'
-    }
-  ]);
-
+  const { products } = useApp();
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  
   const [newReview, setNewReview] = useState({
-    productName: 'Luxury Modern Sofa',
+    productId: '',
     rating: 5,
     comment: ''
   });
 
-  const handleSubmit = (e) => {
+  const fetchMyReviews = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_BASE}/api/reviews/my`);
+      setReviews(res.data || []);
+    } catch (err) {
+      console.error("Error loading my reviews:", err);
+      toast.error("Failed to load your reviews.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyReviews();
+  }, []);
+
+  useEffect(() => {
+    if (products.length > 0 && !newReview.productId) {
+      setNewReview(prev => ({ ...prev, productId: products[0].id }));
+    }
+  }, [products, newReview.productId]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!newReview.productId) {
+      toast.error('Please select a product.');
+      return;
+    }
     if (!newReview.comment.trim()) {
       toast.error('Review comment cannot be empty.');
       return;
     }
-    const submitted = {
-      id: Date.now(),
-      productName: newReview.productName,
-      productImage: newReview.productName.includes('Sofa')
-        ? 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=150&q=80'
-        : 'https://images.unsplash.com/photo-1592078615290-033ee584e267?auto=format&fit=crop&w=150&q=80',
-      rating: newReview.rating,
-      comment: newReview.comment,
-      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-    };
-    setReviews([submitted, ...reviews]);
-    setModalOpen(false);
-    setNewReview({ productName: 'Luxury Modern Sofa', rating: 5, comment: '' });
-    toast.success('Review submitted successfully!');
+    try {
+      toast.loading('Submitting review...', { id: 'submit-review' });
+      await axios.post(`${API_BASE}/api/reviews`, {
+        productId: newReview.productId,
+        rating: newReview.rating,
+        comment: newReview.comment
+      });
+      toast.success('Review submitted successfully! It is pending moderation.', { id: 'submit-review' });
+      setModalOpen(false);
+      setNewReview({ productId: products[0]?.id || '', rating: 5, comment: '' });
+      fetchMyReviews();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.error || 'Failed to submit review.', { id: 'submit-review' });
+    }
   };
 
-  const handleDelete = (id) => {
-    setReviews(reviews.filter((r) => r.id !== id));
-    toast.success('Review deleted');
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this review?')) return;
+    try {
+      toast.loading('Deleting review...', { id: 'delete-review' });
+      await axios.delete(`${API_BASE}/api/reviews/${id}`);
+      toast.success('Review deleted', { id: 'delete-review' });
+      fetchMyReviews();
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.error || 'Failed to delete review.', { id: 'delete-review' });
+    }
   };
 
   return (
@@ -72,55 +97,89 @@ export default function Reviews() {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-6">
-        {reviews.length > 0 ? (
-          reviews.map((rev) => (
-            <Card key={rev.id} className="flex flex-col sm:flex-row gap-4 p-5 items-stretch bg-white">
-              {/* Product Thumbnail */}
-              <div className="w-16 h-16 bg-gray-150 rounded-large overflow-hidden flex-shrink-0 self-center">
-                <img src={rev.productImage} alt={rev.productName} className="w-full h-full object-cover" />
-              </div>
-
-              {/* Review details */}
-              <div className="flex-grow flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between gap-4 mb-1">
-                    <h4 className="font-bold text-gray-850 text-sm">{rev.productName}</h4>
-                    <span className="text-[10px] text-gray-400 font-semibold">{rev.date}</span>
-                  </div>
-                  
-                  {/* Rating Stars */}
-                  <div className="flex text-yellow-500 mb-2.5">
-                    {[...Array(5)].map((_, i) => (
-                      <FiStar
-                        key={i}
-                        className={`w-3.5 h-3.5 ${i < rev.rating ? 'fill-current' : 'text-gray-250'}`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 font-medium leading-relaxed">{rev.comment}</p>
+      {loading ? (
+        <div className="flex justify-center items-center py-20 gap-2 text-primary font-bold">
+          <FiRefreshCw className="animate-spin" size={20} />
+          <span>Loading reviews...</span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-6">
+          {reviews.length > 0 ? (
+            reviews.map((rev) => (
+              <Card key={rev._id} className="flex flex-col sm:flex-row gap-4 p-5 items-stretch bg-white border border-gray-100">
+                {/* Product Thumbnail */}
+                <div className="w-16 h-16 bg-gray-50 rounded-large overflow-hidden flex-shrink-0 self-center border border-gray-100">
+                  <img 
+                    src={rev.product?.thumbnailUrl || 'https://mahaveer-smart-furniture-hub.s3.eu-north-1.amazonaws.com/cache/sofa/img-0.webp'} 
+                    alt={rev.product?.name || 'Product'} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = 'https://mahaveer-smart-furniture-hub.s3.eu-north-1.amazonaws.com/cache/sofa/img-0.webp';
+                    }}
+                  />
                 </div>
-              </div>
 
-              {/* Action columns */}
-              <div className="flex sm:flex-col justify-end items-end border-t sm:border-t-0 sm:border-l border-gray-100 pt-3 sm:pt-0 sm:pl-4 flex-shrink-0">
-                <button
-                  onClick={() => handleDelete(rev.id)}
-                  className="p-2 text-gray-450 hover:text-danger rounded-full hover:bg-gray-50 transition-colors"
-                  title="Delete Review"
-                >
-                  <FiTrash2 size={16} />
-                </button>
-              </div>
-            </Card>
-          ))
-        ) : (
-          <div className="text-center py-12 text-gray-400 border border-dashed rounded-large">
-            <FiMessageCircle size={40} className="mx-auto mb-2 text-gray-300" />
-            <p className="text-sm font-medium">No reviews submitted yet</p>
-          </div>
-        )}
-      </div>
+                {/* Review details */}
+                <div className="flex-grow flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-4 mb-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-gray-850 text-sm leading-tight">{rev.product?.name || 'N/A'}</h4>
+                        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
+                          rev.status === 'Approved' ? 'bg-green-50 text-green-600 border border-green-100' :
+                          rev.status === 'Rejected' ? 'bg-red-50 text-red-600 border border-red-100' :
+                          'bg-yellow-50 text-yellow-600 border border-yellow-100'
+                        }`}>
+                          {rev.status}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-400 font-semibold">
+                        {new Date(rev.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                    
+                    {/* Rating Stars */}
+                    <div className="flex text-yellow-500 mb-2.5">
+                      {[...Array(5)].map((_, i) => (
+                        <FiStar
+                          key={i}
+                          className={`w-3.5 h-3.5 ${i < rev.rating ? 'fill-current' : 'text-gray-250'}`}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 font-medium leading-relaxed italic">"{rev.comment}"</p>
+
+                    {/* Merchant Reply if available */}
+                    {rev.merchantReply && (
+                      <div className="mt-3.5 bg-primary-light/10 border border-primary/10 rounded-large p-3 text-xs">
+                        <span className="font-bold text-primary block mb-1">Response from Store:</span>
+                        <p className="text-gray-650 font-medium">{rev.merchantReply}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action columns */}
+                <div className="flex sm:flex-col justify-end items-end border-t sm:border-t-0 sm:border-l border-gray-100 pt-3 sm:pt-0 sm:pl-4 flex-shrink-0">
+                  <button
+                    onClick={() => handleDelete(rev._id)}
+                    className="p-2 text-gray-400 hover:text-danger rounded-full hover:bg-gray-50 transition-colors animate-pulse-hover"
+                    title="Delete Review"
+                  >
+                    <FiTrash2 size={16} />
+                  </button>
+                </div>
+              </Card>
+            ))
+          ) : (
+            <div className="text-center py-12 text-gray-400 border border-dashed border-gray-200 rounded-large">
+              <FiMessageCircle size={40} className="mx-auto mb-2 text-gray-300" />
+              <p className="text-sm font-medium">No reviews submitted yet</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Write a Review Modal */}
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Write a Product Review">
@@ -128,14 +187,13 @@ export default function Reviews() {
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1.5">Select Furniture Item</label>
             <select
-              value={newReview.productName}
-              onChange={(e) => setNewReview({ ...newReview, productName: e.target.value })}
+              value={newReview.productId}
+              onChange={(e) => setNewReview({ ...newReview, productId: e.target.value })}
               className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-large text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <option value="Luxury Modern Sofa">Luxury Modern Sofa</option>
-              <option value="Ergonomic Office Chair">Ergonomic Office Chair</option>
-              <option value="Solid Oak Dining Table">Solid Oak Dining Table</option>
-              <option value="Premium Storage Cabinet">Premium Storage Cabinet</option>
+              {products.map((prod) => (
+                <option key={prod.id} value={prod.id}>{prod.name}</option>
+              ))}
             </select>
           </div>
 

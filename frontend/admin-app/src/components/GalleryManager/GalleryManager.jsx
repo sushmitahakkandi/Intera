@@ -11,7 +11,8 @@ export default function GalleryManager({ initialImages = [], initialThumbnail = 
   const handleDelete = async (url) => {
     setDeletingUrl(url);
     try {
-      const response = await fetch('http://localhost:5000/api/upload', {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE}/api/upload`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json'

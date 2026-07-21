@@ -11,6 +11,11 @@ export default function Home() {
   // Show top 4 products
   const featuredProducts = products.slice(0, 4);
 
+  // New arrivals: sort products by createdAt descending, then take top 4
+  const newArrivals = [...products]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 4);
+
   return (
     <div className="flex flex-col gap-12 pb-16">
       {/* Hero Banner Section */}
@@ -90,6 +95,26 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* New Arrivals Section */}
+      {newArrivals.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="mb-6 flex justify-between items-end">
+            <div>
+              <h2 className="text-2xl font-extrabold text-gray-800">New Arrivals</h2>
+              <p className="text-xs text-gray-400 font-semibold uppercase mt-0.5">Freshly added collections</p>
+            </div>
+            <Link to="/shop" className="text-sm font-bold text-primary hover:underline">View All</Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {newArrivals.map((prod) => (
+              <Link key={prod.id} to={`/product/${prod.id}`}>
+                <ProductCard product={prod} />
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Featured Products */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
