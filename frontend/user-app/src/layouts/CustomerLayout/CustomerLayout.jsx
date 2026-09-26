@@ -464,7 +464,7 @@ export default function CustomerLayout() {
             </div>
           </div>
           <div className="border-t border-gray-800 py-6 text-center text-xs text-gray-500">
-            &copy; {new Date().getFullYear()} Mahaveer Smart Furniture Hub. All Rights Reserved. Built with Premium React.
+            &copy; {new Date().getFullYear()} Mahaveer Smart Furniture Hub. All Rights Reserved.
           </div>
         </footer>
       )}
